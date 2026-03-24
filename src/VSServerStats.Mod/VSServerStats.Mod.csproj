@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>VSServerStats</AssemblyName>
+    <!-- Output directly to VS mods folder for easy development iteration -->
+    <OutputPath>$(APPDATA)\VintagestoryData\Mods\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- Vintage Story game DLLs — not distributed, referenced locally only -->
+  <ItemGroup>
+    <Reference Include="VintagestoryAPI">
+      <HintPath>C:\Games\Vintagestory\VintagestoryAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VintagestoryLib">
+      <HintPath>C:\Games\Vintagestory\VintagestoryLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VSServerStats.Shared\VSServerStats.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

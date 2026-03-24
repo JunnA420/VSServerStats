@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VSServerStats.Mod/VSServerStats.Mod.csproj" />
+    <Project Path="src/VSServerStats.Shared/VSServerStats.Shared.csproj" />
+    <Project Path="src/VSServerStats.Web/VSServerStats.Web.csproj" />
+  </Folder>
+</Solution>

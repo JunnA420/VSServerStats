@@ -1,0 +1,11 @@
+{
+  "modid": "vsserverstats",
+  "name": "VS Server Stats",
+  "description": "Tracks per-player stats (deaths, km walked, etc.) and exports them for the web dashboard.",
+  "authors": ["YourName"],
+  "version": "1.0.0",
+  "type": "code",
+  "dependencies": {
+    "game": ">=1.19.0"
+  }
+}
