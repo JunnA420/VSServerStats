@@ -49,8 +49,8 @@
                         </td>
                         <td class="lb-td lb-num">@p.Deaths</td>
                         <td class="lb-td lb-num">@DeathsPerHour(p)</td>
-                        <td class="lb-td lb-num">@FormatPlaytime(p.PlaytimeSeconds)</td>
-                        <td class="lb-td lb-num">@FormatDistance(p.DistanceWalkedMeters)</td>
+                        <td class="lb-td lb-num">@Fmt.Playtime(p.PlaytimeSeconds)</td>
+                        <td class="lb-td lb-num">@Fmt.Distance(p.DistanceWalkedMeters)</td>
                         <td class="lb-td lb-num">@p.LastSeen.ToLocalTime().ToString("dd.MM.yyyy")</td>
                     </tr>
                     rank++;
@@ -81,24 +81,10 @@
         _ => ""
     };
 
-    private static string FormatPlaytime(double seconds)
-    {
-        var ts = TimeSpan.FromSeconds(seconds);
-        if (ts.TotalHours < 1) return $"{ts.Minutes}m";
-        if (ts.TotalDays < 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
-        return $"{(int)ts.TotalDays}d {ts.Hours}h";
-    }
-
     private static string DeathsPerHour(VSServerStats.Shared.Models.PlayerStats p)
     {
         var hours = p.PlaytimeSeconds / 3600.0;
         if (hours < 0.1) return "—";
         return $"{p.Deaths / hours:F2}";
-    }
-
-    private static string FormatDistance(double meters)
-    {
-        if (meters < 1000) return $"{(int)meters} m";
-        return $"{(meters / 1000):F1} km";
     }
 }

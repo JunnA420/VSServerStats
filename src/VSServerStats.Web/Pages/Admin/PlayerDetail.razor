@@ -208,48 +208,35 @@ else
         _loading = false;
     }
 
-    private async Task DoKick()
+    private async Task RunAction(Func<Task<AdminActionResponse?>> action, Action? onSuccess = null)
     {
         if (_player == null) return;
         _busy = true; _actionMsg = "";
-        var res = await AdminService.KickPlayerAsync(new AdminActionRequest
-        {
-            PlayerUid  = _player.PlayerUid,
-            PlayerName = _player.PlayerName,
-            Reason     = _kickReason
-        });
+        var res = await action();
         _actionOk  = res?.Success ?? false;
         _actionMsg = res?.Message ?? "Chyba komunikace";
+        if (_actionOk) onSuccess?.Invoke();
         _busy = false;
     }
 
-    private async Task DoBan()
+    private Task DoKick() => RunAction(() => AdminService.KickPlayerAsync(new AdminActionRequest
     {
-        if (_player == null) return;
-        _busy = true; _actionMsg = "";
-        var res = await AdminService.BanPlayerAsync(new AdminActionRequest
-        {
-            PlayerUid    = _player.PlayerUid,
-            PlayerName   = _player.PlayerName,
-            Reason       = _banReason,
-            DurationHours = _banHours
-        });
-        _actionOk  = res?.Success ?? false;
-        _actionMsg = res?.Message ?? "Chyba komunikace";
-        if (_actionOk) _player.IsBanned = true;
-        _busy = false;
-    }
+        PlayerUid  = _player!.PlayerUid,
+        PlayerName = _player.PlayerName,
+        Reason     = _kickReason
+    }));
 
-    private async Task DoUnban()
+    private Task DoBan() => RunAction(() => AdminService.BanPlayerAsync(new AdminActionRequest
     {
-        if (_player == null) return;
-        _busy = true; _actionMsg = "";
-        var res = await AdminService.UnbanPlayerAsync(_player.PlayerUid);
-        _actionOk  = res?.Success ?? false;
-        _actionMsg = res?.Message ?? "Chyba komunikace";
-        if (_actionOk) _player.IsBanned = false;
-        _busy = false;
-    }
+        PlayerUid     = _player!.PlayerUid,
+        PlayerName    = _player.PlayerName,
+        Reason        = _banReason,
+        DurationHours = _banHours
+    }), () => _player!.IsBanned = true);
+
+    private Task DoUnban() => RunAction(
+        () => AdminService.UnbanPlayerAsync(_player!.PlayerUid),
+        () => _player!.IsBanned = false);
 
     private async Task OnLogFileSelected(InputFileChangeEventArgs e)
     {

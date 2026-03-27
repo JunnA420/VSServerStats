@@ -15,6 +15,12 @@
     --text-primary: #f0e6cc;
     --text-secondary: #9a8a6a;
     --text-muted: #5a5040;
+    --gold-04: var(--gold-04);
+    --gold-06: var(--gold-06);
+    --gold-08: var(--gold-08);
+    --gold-10: var(--gold-10);
+    --gold-12: rgba(201, 168, 76, 0.12);
+    --gold-20: rgba(201, 168, 76, 0.20);
 }
 
 *, *::before, *::after {
@@ -135,7 +141,7 @@ html, body {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse 70% 60% at 50% 40%, rgba(201, 168, 76, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 70% 60% at 50% 40%, var(--gold-08) 0%, transparent 70%),
         radial-gradient(ellipse 100% 80% at 50% 100%, rgba(0,0,0,0.8) 0%, transparent 60%);
     pointer-events: none;
 }
@@ -243,7 +249,7 @@ html, body {
 }
 
 .btn-outline:hover {
-    background: rgba(201, 168, 76, 0.08);
+    background: var(--gold-08);
     border-color: var(--gold);
     box-shadow: 0 0 20px rgba(201, 168, 76, 0.2);
     transform: translateY(-2px);
@@ -334,7 +340,7 @@ html, body {
     background: var(--bg-card-hover);
     border-color: var(--border-gold-bright);
     transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 20px rgba(201, 168, 76, 0.08);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 20px var(--gold-08);
 }
 
 .card:hover::before { opacity: 1; }
@@ -390,11 +396,11 @@ html, body {
 .lb-th.lb-num { text-align: right; }
 
 .lb-row {
-    border-bottom: 1px solid rgba(201, 168, 76, 0.08);
+    border-bottom: 1px solid var(--gold-08);
     transition: background 0.15s ease;
 }
 
-.lb-row:hover { background: rgba(201, 168, 76, 0.04); }
+.lb-row:hover { background: var(--gold-04); }
 
 .lb-row.rank-gold  { background: rgba(201, 168, 76, 0.07); }
 .lb-row.rank-silver { background: rgba(180, 180, 180, 0.04); }
@@ -724,7 +730,7 @@ a:hover { color: var(--gold-light); }
     justify-content: space-between;
     align-items: center;
     padding: 0.7rem 1rem;
-    background: rgba(201,168,76,0.04);
+    background: var(--gold-04);
     border-bottom: 1px solid var(--border-gold);
 }
 
@@ -741,22 +747,22 @@ a:hover { color: var(--gold-light); }
     font-size: 0.7rem;
     color: var(--gold);
     font-variant-numeric: tabular-nums;
-    background: rgba(201,168,76,0.1);
+    background: var(--gold-10);
     padding: 2px 7px;
     border-radius: 10px;
-    border: 1px solid rgba(201,168,76,0.2);
+    border: 1px solid var(--gold-20);
 }
 
 
 
 .poe-skill-row {
     padding: 7px 1rem;
-    border-bottom: 1px solid rgba(201,168,76,0.06);
+    border-bottom: 1px solid var(--gold-06);
     transition: background 0.15s;
 }
 
 .poe-skill-row:last-child { border-bottom: none; }
-.poe-skill-row:hover { background: rgba(201,168,76,0.04); }
+.poe-skill-row:hover { background: var(--gold-04); }
 
 .poe-skill-top {
     display: flex;
@@ -781,7 +787,7 @@ a:hover { color: var(--gold-light); }
 
 .poe-skill-bar-track {
     height: 4px;
-    background: rgba(201,168,76,0.12);
+    background: var(--gold-12);
     border-radius: 2px;
     position: relative;
 }
@@ -795,7 +801,7 @@ a:hover { color: var(--gold-light); }
 }
 
 .poe-skill-row-clickable { cursor: pointer; }
-.poe-skill-row-clickable:hover { background: rgba(201,168,76,0.07); }
+.poe-skill-row-clickable:hover { background: var(--gold-08); }
 
 .poe-skill-arrow {
     display: inline-block;
@@ -813,7 +819,7 @@ a:hover { color: var(--gold-light); }
 .poe-abilities-list {
     margin-top: 6px;
     padding: 6px 0 2px 1rem;
-    border-top: 1px solid rgba(201,168,76,0.08);
+    border-top: 1px solid var(--gold-08);
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -967,7 +973,7 @@ a:hover { color: var(--gold-light); }
     justify-content: space-between;
     align-items: center;
     padding: 0.85rem 1.2rem;
-    border-bottom: 1px solid rgba(201, 168, 76, 0.06);
+    border-bottom: 1px solid var(--gold-06);
 }
 
 .stat-row:last-child { border-bottom: none; }
@@ -1212,7 +1218,7 @@ a:hover { color: var(--gold-light); }
     gap: 0.75rem;
     flex-wrap: wrap;
     padding: 1rem;
-    background: rgba(201, 168, 76, 0.04);
+    background: var(--gold-04);
     border-radius: 3px;
     border: 1px solid rgba(201, 168, 76, 0.1);
 }
@@ -1306,7 +1312,7 @@ a:hover { color: var(--gold-light); }
 }
 
 .carousel-btn:hover {
-    background: rgba(201,168,76,0.2);
+    background: var(--gold-20);
     color: var(--gold-light);
 }
 
@@ -1356,7 +1362,7 @@ a:hover { color: var(--gold-light); }
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(ellipse at 50% 30%, rgba(201,168,76,0.07) 0%, transparent 70%), var(--bg-black);
+    background: radial-gradient(ellipse at 50% 30%, var(--gold-08) 0%, transparent 70%), var(--bg-black);
 }
 
 .admin-login-box {
@@ -1492,7 +1498,7 @@ a:hover { color: var(--gold-light); }
 }
 
 .admin-nav-link:hover, .admin-nav-link.active {
-    background: rgba(201,168,76,0.1);
+    background: var(--gold-10);
     color: var(--gold);
 }
 
@@ -1674,7 +1680,7 @@ a:hover { color: var(--gold-light); }
 
 .dash-bar-track {
     height: 10px;
-    background: rgba(201,168,76,0.1);
+    background: var(--gold-10);
     border-radius: 3px;
     overflow: hidden;
 }
@@ -1767,12 +1773,12 @@ a:hover { color: var(--gold-light); }
 
 .admin-table td {
     padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid rgba(201,168,76,0.08);
+    border-bottom: 1px solid var(--gold-08);
     color: var(--text-primary);
 }
 
 .admin-table tr:hover td {
-    background: rgba(201,168,76,0.04);
+    background: var(--gold-04);
 }
 
 .admin-td-num {
@@ -1862,7 +1868,7 @@ a:hover { color: var(--gold-light); }
 }
 
 .admin-action-btn {
-    background: rgba(201,168,76,0.1);
+    background: var(--gold-10);
     border: 1px solid var(--border-gold);
     color: var(--gold-light);
     border-radius: 5px;
@@ -1873,7 +1879,7 @@ a:hover { color: var(--gold-light); }
 }
 
 .admin-action-btn:hover {
-    background: rgba(201,168,76,0.2);
+    background: var(--gold-20);
 }
 
 .admin-btn-action {
@@ -2038,7 +2044,7 @@ a:hover { color: var(--gold-light); }
 .admin-chat-search   { flex: 1; max-width: 320px; }
 .admin-chat-count    { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
 .admin-chat-log  { display: flex; flex-direction: column; gap: 0; max-height: 480px; overflow-y: auto;
-                   border: 1px solid rgba(201,168,76,0.1); border-radius: 6px; }
+                   border: 1px solid var(--gold-10); border-radius: 6px; }
 .admin-chat-item { display: flex; gap: 12px; padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .admin-chat-item:last-child { border-bottom: none; }
 .admin-chat-time { color: var(--text-muted); font-size: 0.78rem; min-width: 90px; white-space: nowrap; padding-top: 1px; }
@@ -2065,6 +2071,6 @@ a:hover { color: var(--gold-light); }
 .heatmap-legend          { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-left: 32px; }
 .heatmap-legend-label    { font-size: 0.68rem; color: var(--text-muted); }
 .heatmap-legend-bar      { flex: 1; max-width: 200px; height: 10px; border-radius: 4px;
-                            background: linear-gradient(to right, rgba(201,168,76,0.07), rgba(201,168,76,1));
-                            border: 1px solid rgba(201,168,76,0.2); }
+                            background: linear-gradient(to right, var(--gold-08), rgba(201,168,76,1));
+                            border: 1px solid var(--gold-20); }
 .admin-section-sub       { font-size: 0.75rem; font-weight: 400; color: var(--text-muted); margin-left: 6px; }

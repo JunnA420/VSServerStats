@@ -58,7 +58,7 @@ else
                                         {
                                             <span class="poe-skill-arrow @(isExpanded ? "expanded" : "")">▶</span>
                                         }
-                                        @SkillName(skill.Key)
+                                        @Fmt.SkillName(skill.Key)
                                     </span>
                                     <span class="poe-skill-level @(isMax ? "poe-skill-maxed" : "")">@skill.Value <span class="poe-skill-max">/ @MaxLevel</span></span>
                                 </div>
@@ -71,7 +71,7 @@ else
                                         @foreach (var ability in abilities!)
                                         {
                                             <div class="poe-ability-row">
-                                                <span class="poe-ability-name">@AbilityName(ability.Key)</span>
+                                                <span class="poe-ability-name">@Fmt.AbilityName(ability.Key)</span>
                                                 <span class="poe-ability-tier">@(new string('★', ability.Value))</span>
                                             </div>
                                         }
@@ -122,11 +122,11 @@ else
                         </div>
                         <div class="stat-row">
                             <span class="stat-row-label">Odehraný čas</span>
-                            <span class="stat-row-value">@FormatPlaytime(_player.PlaytimeSeconds)</span>
+                            <span class="stat-row-value">@Fmt.Playtime(_player.PlaytimeSeconds)</span>
                         </div>
                         <div class="stat-row">
                             <span class="stat-row-label">Ujetá vzdálenost</span>
-                            <span class="stat-row-value">@FormatDistance(_player.DistanceWalkedMeters)</span>
+                            <span class="stat-row-value">@Fmt.Distance(_player.DistanceWalkedMeters)</span>
                         </div>
                     </div>
                 </div>
@@ -227,127 +227,4 @@ else
         _expandedSkill = _expandedSkill == key ? null : key;
     }
 
-    private static string AbilityName(string key) => key switch
-    {
-        "longlife"            => "Dlouhý život",
-        "hugestomach"         => "Velký žaludek",
-        "wellrested"          => "Odpočatý",
-        "featherfall"         => "Péřový pád",
-        "allrounder"          => "Všestranný",
-        "strongback"          => "Silná záda",
-        "scout"               => "Průzkumník",
-        "healer"              => "Léčitel",
-        "steeplechaser"       => "Překážkář",
-        "luminiferous"        => "Luminiferous",
-        "nudist"              => "Nudista",
-        "abundanceadaptation" => "Adaptace hojnosti",
-        "greenthumb"          => "Zelený palec",
-        "gatherer"            => "Sběrač",
-        "carefulhands"        => "Opatrné ruce",
-        "farmer"              => "Farmář",
-        "demetersbless"       => "Démétřino požehnání",
-        "claydigger"          => "Kopač hlíny",
-        "shovelexpert"        => "Expert s lopatou",
-        "carefuldigger"       => "Opatrný kopač",
-        "mixedclay"           => "Smíšená hlína",
-        "saltpeterdigger"     => "Kopač ledku",
-        "lumberjack"          => "Dřevorubec",
-        "afforestation"       => "Zalesňování",
-        "treenursery"         => "Lesní školka",
-        "charcoalburner"      => "Uhlíř",
-        "carefullumberjack"   => "Opatrný dřevorubec",
-        "moreladders"         => "Více žebříků",
-        "resinfarmer"         => "Pryskyřičář",
-        "stonebreaker"        => "Lámač kamene",
-        "oreminer"            => "Rudný horník",
-        "carefulminer"        => "Opatrný horník",
-        "miner"               => "Horník",
-        "crystalseeker"       => "Hledač krystalů",
-        "bomberman"           => "Minér",
-        "butcher"             => "Řezník",
-        "rancher"             => "Rančer",
-        "hunter"              => "Lovec",
-        "swordsman"           => "Šermíř",
-        "spearman"            => "Kopinář",
-        "looter"              => "Loupežník",
-        "toolmastery"         => "Mistr nástrojů",
-        "heavyarmorexpert"    => "Expert těžké zbroje",
-        "freshflesh"          => "Čerstvé maso",
-        "smelter"             => "Tavič",
-        "blacksmith"          => "Kovář",
-        "metalworker"         => "Kovozpracovatel",
-        "metalrecovery"       => "Recyklace kovů",
-        "hammerexpert"        => "Expert s kladivem",
-        "heatinghits"         => "Žhavé údery",
-        "finishingtouch"      => "Poslední dotyk",
-        "duplicator"          => "Duplikátor",
-        "mastersmith"         => "Mistr kovář",
-        "senseoftime"         => "Cit pro čas",
-        "machinelearning"     => "Strojové učení",
-        "bloomeryexpert"      => "Expert na dmychárnu",
-        "automatedsmithing"   => "Automatické kování",
-        "thrift"              => "Šetrnost",
-        "layerlayer"          => "Vrstva po vrstvě",
-        "perfectionist"       => "Perfekcionista",
-        "canteencook"         => "Polní kuchař",
-        "welldone"            => "Dobře propečené",
-        "dilution"            => "Ředění",
-        "fastfood"            => "Rychlé jídlo",
-        "gourmet"             => "Gurmán",
-        "saltybackpack"       => "Solený batoh",
-        "temporalstable"      => "Temporální stabilita",
-        "temporalrecovery"    => "Temporální regenerace",
-        "shifter"             => "Přesouvač",
-        "stableminer"         => "Stabilní horník",
-        "stablewarrior"       => "Stabilní válečník",
-        "caveman"             => "Jeskynní člověk",
-        "fastforward"         => "Rychle vpřed",
-        _                     => key
-    };
-
-    private static string SkillIcon(string key) => key switch
-    {
-        "survival"           => "❤",
-        "farming"            => "🌾",
-        "digging"            => "⛏",
-        "forestry"           => "🪓",
-        "mining"             => "⚒",
-        "husbandry"          => "🐄",
-        "combat"             => "⚔",
-        "metalworking"       => "🔨",
-        "pottery"            => "🏺",
-        "cooking"            => "🍲",
-        "temporaladaptation" => "⏳",
-        _                    => "✦"
-    };
-
-    private static string SkillName(string key) => key switch
-    {
-        "survival"           => "Přežití",
-        "farming"            => "Zemědělství",
-        "digging"            => "Kopání",
-        "forestry"           => "Lesnictví",
-        "mining"             => "Těžba",
-        "husbandry"          => "Chov",
-        "combat"             => "Boj",
-        "metalworking"       => "Kovářství",
-        "pottery"            => "Hrnčířství",
-        "cooking"            => "Vaření",
-        "temporaladaptation" => "Temp. adaptace",
-        _                    => key
-    };
-
-    private static string FormatPlaytime(double seconds)
-    {
-        var ts = TimeSpan.FromSeconds(seconds);
-        if (ts.TotalHours < 1) return $"{ts.Minutes}m";
-        if (ts.TotalDays < 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
-        return $"{(int)ts.TotalDays}d {ts.Hours}h";
-    }
-
-    private static string FormatDistance(double meters)
-    {
-        if (meters < 1000) return $"{(int)meters} m";
-        return $"{(meters / 1000.0):F1} km";
-    }
 }

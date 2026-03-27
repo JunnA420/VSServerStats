@@ -29,6 +29,16 @@ public class StatsTracker : IDisposable
     private readonly object _saveLock = new();
     private readonly bool _xSkillsPresent;
 
+    // Dirty flags — avoid writing to disk unless data actually changed
+    private volatile bool _statsDirty;
+    private volatile bool _appearanceDirty;
+    private volatile bool _sessionsDirty;
+
+    // xSkills cache — re-read only every 60s
+    private Dictionary<string, XSkillsSavedSkillSet> _xSkillsCache = new();
+    private DateTime _xSkillsCacheTime = DateTime.MinValue;
+    private static readonly TimeSpan XSkillsCacheTtl = TimeSpan.FromSeconds(60);
+
     public StatsTracker(ICoreServerAPI api)
     {
         _sapi = api;
@@ -113,7 +123,7 @@ public class StatsTracker : IDisposable
         }
 
         _appearances[uid] = appearance;
-        SaveAppearanceToDisk();
+        _appearanceDirty = true;
     }
 
     private void OnPlayerLeave(IServerPlayer player)
@@ -123,12 +133,12 @@ public class StatsTracker : IDisposable
         {
             var session = new SessionRecord { PlayerUid = uid, JoinTime = joinTime, LeaveTime = DateTime.UtcNow };
             lock (_saveLock) { _sessions.Add(session); TrimSessions(); }
-            SaveSessionsToDisk();
+            _sessionsDirty = true;
         }
         FlushPlaytime(uid);
         _lastPositions.TryRemove(uid, out _);
         _sessionStart.TryRemove(uid, out _);
-        SaveToDisk();
+        _statsDirty = true;
     }
 
     private void OnPlayerDeath(IServerPlayer player, DamageSource damageSource)
@@ -141,7 +151,7 @@ public class StatsTracker : IDisposable
         if (killerPlayer != null && _stats.TryGetValue(killerPlayer.PlayerUID, out var killerStats))
             killerStats.PlayerKills++;
 
-        SaveToDisk();
+        _statsDirty = true;
     }
 
     private void OnTick(float dt)
@@ -160,21 +170,22 @@ public class StatsTracker : IDisposable
                 var dist = last.DistanceTo(pos);
                 // Sanity cap: ignore teleports / chunks loading (>100m in 5s)
                 if (dist < 100 && _stats.TryGetValue(uid, out var stats))
+                {
                     stats.DistanceWalkedMeters += dist;
+                    _statsDirty = true;
+                }
             }
 
             _lastPositions[uid] = pos.Clone();
 
-            // Refresh appearance if skinConfig wasn't available at join time
-            if (_appearances.TryGetValue(uid, out var app) && app.SkinColor == "skin1" && app.HairColor == "lightgray")
-            {
-                var sc = entity.WatchedAttributes?.GetTreeAttribute("skinConfig");
-                _sapi.Logger.Notification("[VSServerStats] OnTick skinConfig for " + player.PlayerName + ": " + (sc == null ? "NULL" : sc.ToString()));
+            // Refresh appearance once if skinConfig wasn't available at join time
+            if (_appearances.TryGetValue(uid, out var app) && string.IsNullOrEmpty(app.SkinColor))
                 UpdateAppearance((IServerPlayer)player);
-            }
         }
 
-        SaveToDisk();
+        if (_statsDirty)     { SaveToDisk();           _statsDirty      = false; }
+        if (_appearanceDirty){ SaveAppearanceToDisk();  _appearanceDirty = false; }
+        if (_sessionsDirty)  { SaveSessionsToDisk();    _sessionsDirty   = false; }
     }
 
     private void FlushPlaytime(string uid)
@@ -188,23 +199,26 @@ public class StatsTracker : IDisposable
 
     private Dictionary<string, XSkillsSavedSkillSet> ReadAllXSkills()
     {
+        if (DateTime.UtcNow - _xSkillsCacheTime < XSkillsCacheTtl)
+            return _xSkillsCache;
+
         try
         {
             var worldName = _sapi.WorldManager.SaveGame.WorldName;
-            var invalidChars = new string(Path.GetInvalidFileNameChars());
-            var sanitized = System.Text.RegularExpressions.Regex.Replace(worldName, "[" + System.Text.RegularExpressions.Regex.Escape(invalidChars) + "]", "");
+            var sanitized = string.Concat(worldName.Split(Path.GetInvalidFileNameChars()));
             var filePath = Path.Combine(Vintagestory.API.Config.GamePaths.Saves, "XLeveling", sanitized + ".json");
 
-            if (!File.Exists(filePath)) return new();
+            if (!File.Exists(filePath)) return _xSkillsCache;
 
             var json = File.ReadAllText(filePath);
-            return JsonSerializer.Deserialize<Dictionary<string, XSkillsSavedSkillSet>>(json, _caseInsensitive) ?? new();
+            _xSkillsCache = JsonSerializer.Deserialize<Dictionary<string, XSkillsSavedSkillSet>>(json, _caseInsensitive) ?? new();
+            _xSkillsCacheTime = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
             _sapi.Logger.Warning("[VSServerStats] Could not read xSkills: " + ex.Message);
-            return new();
         }
+        return _xSkillsCache;
     }
 
     public List<PlayerStats> GetAllStats()
@@ -383,8 +397,14 @@ public class StatsTracker : IDisposable
 
     public void Dispose()
     {
+        _sapi.Event.PlayerDeath       -= OnPlayerDeath;
+        _sapi.Event.PlayerNowPlaying  -= OnPlayerJoin;
+        _sapi.Event.PlayerDisconnect  -= OnPlayerLeave;
+
         foreach (var uid in _sessionStart.Keys)
             FlushPlaytime(uid);
         SaveToDisk();
+        if (_appearanceDirty) SaveAppearanceToDisk();
+        if (_sessionsDirty)   SaveSessionsToDisk();
     }
 }
