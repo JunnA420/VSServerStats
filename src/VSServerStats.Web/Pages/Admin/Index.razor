@@ -1,0 +1,287 @@
+@page "/admin"
+@layout AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject StatsService StatsService
+@inject AdminService AdminService
+@using VSServerStats.Shared.Models
+@using VSServerStats.Web.Services
+@using VSServerStats.Web.Shared
+
+<PageTitle>Dashboard — Admin</PageTitle>
+
+<div class="admin-topbar">
+    <h1 class="admin-page-title">Dashboard</h1>
+    <span class="admin-updated">@_updated</span>
+</div>
+
+@if (_loading)
+{
+    <p class="admin-empty">Načítám…</p>
+}
+else if (_stats == null)
+{
+    <p class="admin-offline">Server je momentálně offline nebo nedostupný.</p>
+}
+else
+{
+    <!-- Stat strip -->
+    <div class="dash-strip">
+        <div class="dash-stat">
+            <span class="dash-stat-value @(Online > 0 ? "dash-stat-online" : "")">@Online / @Total</span>
+            <span class="dash-stat-label">Online / Celkem</span>
+        </div>
+        <div class="dash-strip-sep"></div>
+        <div class="dash-stat">
+            <span class="dash-stat-value @(ActiveBans > 0 ? "dash-stat-warn" : "")">@ActiveBans</span>
+            <span class="dash-stat-label">Aktivní bany</span>
+        </div>
+        <div class="dash-strip-sep"></div>
+        <div class="dash-stat">
+            <span class="dash-stat-value">@TotalBans</span>
+            <span class="dash-stat-label">Bany celkem</span>
+        </div>
+        <div class="dash-strip-sep"></div>
+        <div class="dash-stat">
+            <span class="dash-stat-value">@WhitelistCount</span>
+            <span class="dash-stat-label">Whitelist</span>
+        </div>
+        <div class="dash-strip-sep"></div>
+        <div class="dash-stat">
+            <span class="dash-stat-value @(InactiveCount > 0 ? "dash-stat-muted" : "")">@InactiveCount</span>
+            <span class="dash-stat-label">Neaktivní 30d</span>
+        </div>
+        <div class="dash-strip-sep"></div>
+        <div class="dash-stat">
+            <span class="dash-stat-value">@TotalPlaydays d</span>
+            <span class="dash-stat-label">Celkem odehráno</span>
+        </div>
+    </div>
+
+    <!-- Two column layout -->
+    <div class="dash-grid">
+
+        <!-- LEFT: Online players + Top table -->
+        <div class="dash-col-main">
+
+            <!-- Online players -->
+            <section class="admin-section">
+                <h2 class="admin-section-title">Online hráči <span class="admin-section-sub">(@Online)</span></h2>
+                @if (!_stats.OnlinePlayers.Any())
+                {
+                    <p class="admin-empty">Nikdo není online.</p>
+                }
+                else
+                {
+                    <table class="admin-table">
+                        <thead>
+                            <tr><th>Hráč</th><th>Odehráno</th><th>Smrti</th><th>Zabití</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var name in _stats.OnlinePlayers)
+                            {
+                                var p = _stats.Players.FirstOrDefault(x => x.PlayerName == name);
+                                <tr>
+                                    <td>
+                                        <span class="online-dot"></span>
+                                        @if (p != null)
+                                        {
+                                            <a class="admin-player-link" href="/admin/player/@Uri.EscapeDataString(p.PlayerUid)">@name</a>
+                                        }
+                                        else { <span>@name</span> }
+                                    </td>
+                                    <td class="admin-td-num">@(p != null ? Fmt.Playtime(p.PlaytimeSeconds) : "—")</td>
+                                    <td class="admin-td-num">@(p?.Deaths ?? 0)</td>
+                                    <td class="admin-td-num">@(p?.PlayerKills ?? 0)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+
+            <!-- Top 10 table -->
+            <section class="admin-section">
+                <h2 class="admin-section-title">Top 10 hráčů <span class="admin-section-sub">odehraný čas</span></h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Hráč</th><th>Odehráno</th><th>Smrti</th><th>Zabití</th><th>Vzdálenost</th><th>Naposledy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int rank = 1; }
+                        @foreach (var p in _stats.Players.OrderByDescending(p => p.PlaytimeSeconds).Take(10))
+                        {
+                            <tr>
+                                <td class="admin-td-num dash-rank">@rank</td>
+                                <td><a class="admin-player-link" href="/admin/player/@Uri.EscapeDataString(p.PlayerUid)">@p.PlayerName</a></td>
+                                <td class="admin-td-num">@Fmt.Playtime(p.PlaytimeSeconds)</td>
+                                <td class="admin-td-num">@p.Deaths</td>
+                                <td class="admin-td-num">@p.PlayerKills</td>
+                                <td class="admin-td-num">@Fmt.Distance(p.DistanceWalkedMeters)</td>
+                                <td class="admin-td-num">@p.LastSeen.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
+                            </tr>
+                            rank++;
+                        }
+                    </tbody>
+                </table>
+            </section>
+
+        </div>
+
+        <!-- RIGHT: Bar chart + Active bans -->
+        <div class="dash-col-side">
+
+            <!-- Bar chart: top 8 playtime -->
+            <section class="admin-section">
+                <h2 class="admin-section-title">Odehraný čas <span class="admin-section-sub">top 8</span></h2>
+                @{
+                    var chartPlayers = _stats.Players.OrderByDescending(p => p.PlaytimeSeconds).Take(8).ToList();
+                    var chartMax = chartPlayers.FirstOrDefault()?.PlaytimeSeconds ?? 1;
+                }
+                <div class="dash-chart">
+                    @foreach (var p in chartPlayers)
+                    {
+                        var pct = chartMax > 0 ? (p.PlaytimeSeconds / chartMax * 100) : 0;
+                        var pctStr = pct.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+                        <div class="dash-bar-row">
+                            <span class="dash-bar-name">@p.PlayerName</span>
+                            <div class="dash-bar-track">
+                                <div class="dash-bar-fill" style="width: @pctStr%"></div>
+                            </div>
+                            <span class="dash-bar-val">@Fmt.Playtime(p.PlaytimeSeconds)</span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- Active bans -->
+            <section class="admin-section">
+                <h2 class="admin-section-title">Aktivní bany <span class="admin-section-sub">(@ActiveBans)</span></h2>
+                @if (ActiveBans == 0)
+                {
+                    <p class="admin-empty">Žádné aktivní bany.</p>
+                }
+                else
+                {
+                    <table class="admin-table">
+                        <thead><tr><th>Hráč</th><th>Důvod</th><th>Expiruje</th></tr></thead>
+                        <tbody>
+                            @foreach (var b in _bans!.Where(b => b.Active).OrderByDescending(b => b.BannedAt))
+                            {
+                                <tr class="admin-row-banned">
+                                    <td><a class="admin-player-link" href="/admin/player/@Uri.EscapeDataString(b.PlayerUid)">@b.PlayerName</a></td>
+                                    <td>@b.Reason</td>
+                                    <td class="admin-td-num">@(b.ExpiresAt.HasValue ? b.ExpiresAt.Value.ToLocalTime().ToString("dd.MM.yy HH:mm") : "trvale")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Heatmap -->
+    <section class="admin-section">
+        <h2 class="admin-section-title">Aktivita serveru <span class="admin-section-sub">posledních 90 dní — hráč·h v danou hodinu</span></h2>
+        @if (_heatmap != null)
+        {
+            var days = new[] { "Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle" };
+            var daysShort = new[] { "Po", "Út", "St", "Čt", "Pá", "So", "Ne" };
+            <div class="heatmap-wrap">
+                <div class="heatmap-hours">
+                    <div class="heatmap-day-label-wide"></div>
+                    @for (int h = 0; h < 24; h++)
+                    {
+                        <div class="heatmap-hour-label">@(h % 3 == 0 ? h.ToString() : "")</div>
+                    }
+                </div>
+                @for (int d = 0; d < 7; d++)
+                {
+                    var day = d;
+                    <div class="heatmap-row">
+                        <div class="heatmap-day-label-wide">@daysShort[day]</div>
+                        @for (int h = 0; h < 24; h++)
+                        {
+                            var hour = h;
+                            var val = _heatmap.Data[day][hour];
+                            var intensity = _heatmap.Max > 0 ? (double)val / _heatmap.Max : 0;
+                            var alpha = intensity < 0.05 ? 0.05 : intensity;
+                            var tooltip = val == 0
+                                ? $"{days[day]} {hour}:00–{hour + 1}:00 — žádná aktivita"
+                                : $"{days[day]} {hour}:00–{hour + 1}:00 — {val} hráč·h za 90 dní";
+                            <div class="heatmap-cell" style="background: rgba(201,168,76,@alpha.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
+                                 title="@tooltip"></div>
+                        }
+                    </div>
+                }
+                <div class="heatmap-legend">
+                    <span class="heatmap-legend-label">méně</span>
+                    <div class="heatmap-legend-bar"></div>
+                    <span class="heatmap-legend-label">více</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="admin-empty">Žádná data o aktivitě.</p>
+        }
+    </section>
+
+    <!-- Inactive players -->
+    <section class="admin-section">
+        <h2 class="admin-section-title">Neaktivní hráči <span class="admin-section-sub">30+ dní</span></h2>
+        @{ var inactive = _stats.Players.Where(p => p.LastSeen < DateTime.UtcNow.AddDays(-30)).OrderBy(p => p.LastSeen).ToList(); }
+        @if (!inactive.Any())
+        {
+            <p class="admin-empty">Všichni byli aktivní v posledních 30 dnech.</p>
+        }
+        else
+        {
+            <table class="admin-table">
+                <thead><tr><th>Hráč</th><th>Naposledy</th><th>Odehráno</th></tr></thead>
+                <tbody>
+                    @foreach (var p in inactive)
+                    {
+                        <tr class="admin-row-inactive">
+                            <td><a class="admin-player-link" href="/admin/player/@Uri.EscapeDataString(p.PlayerUid)">@p.PlayerName</a></td>
+                            <td class="admin-td-num">@p.LastSeen.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                            <td class="admin-td-num">@Fmt.Playtime(p.PlaytimeSeconds)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    private ServerStatsResponse? _stats;
+    private HeatmapResponse? _heatmap;
+    private List<BanRecord>? _bans;
+    private List<WhitelistEntry>? _whitelist;
+    private bool _loading = true;
+    private string _updated = "";
+
+    private int ActiveBans     => _bans?.Count(b => b.Active) ?? 0;
+    private int TotalBans      => _bans?.Count ?? 0;
+    private int WhitelistCount => _whitelist?.Count ?? 0;
+    private int InactiveCount  => _stats?.Players.Count(p => p.LastSeen < DateTime.UtcNow.AddDays(-30)) ?? 0;
+    private int TotalPlaydays  => (int)((_stats?.Players.Sum(p => p.PlaytimeSeconds) ?? 0) / 86400);
+    private int Online         => _stats?.OnlinePlayers.Count ?? 0;
+    private int Total          => _stats?.Players.Count ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats     = await StatsService.GetStatsAsync();
+        _heatmap   = await AdminService.GetHeatmapAsync();
+        var bans   = await AdminService.GetBansAsync();
+        _bans      = bans?.Bans ?? new();
+        var wl     = await AdminService.GetWhitelistAsync();
+        _whitelist = wl?.Entries ?? new();
+        _updated   = "Aktualizováno: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
+        _loading   = false;
+    }
+}

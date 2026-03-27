@@ -1,0 +1,104 @@
+@page "/leaderboard"
+@inject VSServerStats.Web.Services.StatsService StatsService
+
+<PageTitle>Žebříček — Země koruny České</PageTitle>
+
+<div class="content-page">
+    <h1 class="section-title">Žebříček</h1>
+
+    @if (_loading)
+    {
+        <p class="lb-offline">Načítám data...</p>
+    }
+    else if (_stats == null)
+    {
+        <p class="lb-offline">Server je momentálně offline.</p>
+    }
+    else if (_stats.Players.Count == 0)
+    {
+        <p class="lb-offline">Zatím žádní hráči.</p>
+    }
+    else
+    {
+        <table class="lb-table">
+            <thead>
+                <tr>
+                    <th class="lb-th lb-rank">#</th>
+                    <th class="lb-th">Hráč</th>
+                    <th class="lb-th lb-num">Smrti</th>
+                    <th class="lb-th lb-num">Smrti/hod</th>
+                    <th class="lb-th lb-num">Odehraný čas</th>
+                    <th class="lb-th lb-num">Vzdálenost</th>
+                    <th class="lb-th lb-num">Naposledy online</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int rank = 1; }
+                @foreach (var p in _sorted)
+                {
+                    <tr class="lb-row @RankClass(rank)">
+                        <td class="lb-td lb-rank">
+                            <span class="rank-badge rank-@rank">@rank</span>
+                        </td>
+                        <td class="lb-td lb-name">
+                            <a class="lb-player-link" href="player/@Uri.EscapeDataString(p.PlayerUid)">@p.PlayerName</a>
+                            @if (_stats.OnlinePlayers.Contains(p.PlayerName))
+                            {
+                                <span class="online-dot" title="Online"></span>
+                            }
+                        </td>
+                        <td class="lb-td lb-num">@p.Deaths</td>
+                        <td class="lb-td lb-num">@DeathsPerHour(p)</td>
+                        <td class="lb-td lb-num">@FormatPlaytime(p.PlaytimeSeconds)</td>
+                        <td class="lb-td lb-num">@FormatDistance(p.DistanceWalkedMeters)</td>
+                        <td class="lb-td lb-num">@p.LastSeen.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                    </tr>
+                    rank++;
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private VSServerStats.Shared.Models.ServerStatsResponse? _stats;
+    private IEnumerable<VSServerStats.Shared.Models.PlayerStats> _sorted = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await StatsService.GetStatsAsync();
+        if (_stats != null)
+            _sorted = _stats.Players.OrderByDescending(p => p.Deaths);
+        _loading = false;
+    }
+
+    private string RankClass(int rank) => rank switch
+    {
+        1 => "rank-gold",
+        2 => "rank-silver",
+        3 => "rank-bronze",
+        _ => ""
+    };
+
+    private static string FormatPlaytime(double seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        if (ts.TotalHours < 1) return $"{ts.Minutes}m";
+        if (ts.TotalDays < 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+        return $"{(int)ts.TotalDays}d {ts.Hours}h";
+    }
+
+    private static string DeathsPerHour(VSServerStats.Shared.Models.PlayerStats p)
+    {
+        var hours = p.PlaytimeSeconds / 3600.0;
+        if (hours < 0.1) return "—";
+        return $"{p.Deaths / hours:F2}";
+    }
+
+    private static string FormatDistance(double meters)
+    {
+        if (meters < 1000) return $"{(int)meters} m";
+        return $"{(meters / 1000):F1} km";
+    }
+}

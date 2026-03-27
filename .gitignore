@@ -14,6 +14,9 @@ data/server/server.json
 # Secrets — never commit passwords
 appsettings.Development.json
 
+# Claude Code memory
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,0 +1,20 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-logo">⚔ Admin</div>
+        <nav class="admin-nav">
+            <a class="admin-nav-link @(Nav.Uri.EndsWith("/admin") ? "active" : "")" href="/admin">Dashboard</a>
+            <a class="admin-nav-link @(Nav.Uri.Contains("/admin/players") ? "active" : "")" href="/admin/players">Hráči</a>
+            <a class="admin-nav-link @(Nav.Uri.Contains("/admin/whitelist") ? "active" : "")" href="/admin/whitelist">Whitelist</a>
+            <a class="admin-nav-link" href="/">← Web</a>
+        </nav>
+        <form method="post" action="/admin/logout" class="admin-logout-form">
+            <button type="submit" class="admin-logout-btn">Odhlásit</button>
+        </form>
+    </aside>
+    <main class="admin-main">
+        @Body
+    </main>
+</div>

@@ -1,0 +1,115 @@
+@page "/admin/players"
+@layout AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject AdminService AdminService
+@inject NavigationManager Nav
+@using VSServerStats.Web.Services
+@using VSServerStats.Web.Shared
+
+<PageTitle>Hráči — Admin</PageTitle>
+
+<div class="admin-topbar">
+    <h1 class="admin-page-title">Hráči</h1>
+</div>
+
+<div class="admin-filters">
+    <input class="admin-search" type="text" placeholder="Hledat jméno nebo UID…"
+           @bind="_search" @bind:event="oninput" />
+    <label class="admin-filter-check">
+        <input type="checkbox" @bind="_onlineOnly" /> Jen online
+    </label>
+    <label class="admin-filter-check">
+        <input type="checkbox" @bind="_bannedOnly" /> Jen bani
+    </label>
+</div>
+
+@if (_loading)
+{
+    <p class="admin-empty">Načítám…</p>
+}
+else if (_players == null)
+{
+    <p class="admin-offline">Nelze načíst hráče — server nedostupný nebo špatný token.</p>
+}
+else
+{
+    var rows = Filter(_players);
+    <p class="admin-count">Zobrazeno @rows.Count z @_players.Count hráčů</p>
+    <table class="admin-table admin-table-clickable">
+        <thead>
+            <tr>
+                <th @onclick='() => Sort("name")' class="admin-th-sort">Hráč @SortIcon("name")</th>
+                <th @onclick='() => Sort("playtime")' class="admin-th-sort">Odehráno @SortIcon("playtime")</th>
+                <th @onclick='() => Sort("deaths")' class="admin-th-sort">Smrtí @SortIcon("deaths")</th>
+                <th @onclick='() => Sort("kills")' class="admin-th-sort">Zabití @SortIcon("kills")</th>
+                <th @onclick='() => Sort("lastseen")' class="admin-th-sort">Naposledy @SortIcon("lastseen")</th>
+                <th>Stav</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in rows)
+            {
+                <tr class="admin-row-link" @onclick="() => GoToDetail(p.PlayerUid)">
+                    <td>@p.PlayerName</td>
+                    <td class="admin-td-num">@Fmt.Playtime(p.PlaytimeSeconds)</td>
+                    <td class="admin-td-num">@p.Deaths</td>
+                    <td class="admin-td-num">@p.PlayerKills</td>
+                    <td class="admin-td-num">@p.LastSeen.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>
+                        @if (p.IsOnline) { <span class="badge badge-online">online</span> }
+                        else { <span class="badge badge-offline">offline</span> }
+                        @if (p.IsBanned) { <span class="badge badge-banned">ban</span> }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<AdminPlayerRow>? _players;
+    private bool _loading = true;
+    private string _search = "";
+    private bool _onlineOnly;
+    private bool _bannedOnly;
+    private string _sortCol = "playtime";
+    private bool _sortDesc = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _players = await AdminService.GetPlayersAsync();
+        _loading = false;
+    }
+
+    private List<AdminPlayerRow> Filter(List<AdminPlayerRow> src)
+    {
+        var q = src.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var s = _search.Trim();
+            q = q.Where(p => p.PlayerName.Contains(s, StringComparison.OrdinalIgnoreCase)
+                          || p.PlayerUid.Contains(s, StringComparison.OrdinalIgnoreCase));
+        }
+        if (_onlineOnly) q = q.Where(p => p.IsOnline);
+        if (_bannedOnly) q = q.Where(p => p.IsBanned);
+        q = _sortCol switch
+        {
+            "name"     => _sortDesc ? q.OrderByDescending(p => p.PlayerName)    : q.OrderBy(p => p.PlayerName),
+            "deaths"   => _sortDesc ? q.OrderByDescending(p => p.Deaths)         : q.OrderBy(p => p.Deaths),
+            "kills"    => _sortDesc ? q.OrderByDescending(p => p.PlayerKills)    : q.OrderBy(p => p.PlayerKills),
+            "lastseen" => _sortDesc ? q.OrderByDescending(p => p.LastSeen)       : q.OrderBy(p => p.LastSeen),
+            _          => _sortDesc ? q.OrderByDescending(p => p.PlaytimeSeconds) : q.OrderBy(p => p.PlaytimeSeconds),
+        };
+        return q.ToList();
+    }
+
+    private void Sort(string col)
+    {
+        if (_sortCol == col) _sortDesc = !_sortDesc;
+        else { _sortCol = col; _sortDesc = true; }
+    }
+
+    private string SortIcon(string col) => _sortCol == col ? (_sortDesc ? "▼" : "▲") : "";
+
+    private void GoToDetail(string uid) => Nav.NavigateTo($"/admin/player/{Uri.EscapeDataString(uid)}");
+}

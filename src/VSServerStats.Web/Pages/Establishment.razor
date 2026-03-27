@@ -1,0 +1,28 @@
+@using System.Text.Json
+@inject VSServerStats.Web.Services.IFileService FileService
+
+@page "/establishment/{establishmentName}"
+
+<PageTitle>@_establishment?.Name — Země koruny České</PageTitle>
+
+<div class="establishment-page">
+    <div class="establishment-header">
+        <h1 class="section-title">@_establishment?.Name</h1>
+    </div>  
+    
+</div>
+@code {
+     [Parameter] public string establishmentName { get; set; } = "";
+    private List<VSServerStats.Web.Models.Establishment>? _establishments;
+    private VSServerStats.Web.Models.Establishment? _establishment;
+    protected override async Task OnInitializedAsync()
+    {
+        var json = await FileService.LoadEstablishmentsJson();
+        _establishments = JsonSerializer.Deserialize<List<VSServerStats.Web.Models.Establishment>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            }) ?? new List<VSServerStats.Web.Models.Establishment>();
+
+        this._establishment = _establishments?.FirstOrDefault(e => e.Name == establishmentName);
+    }
+}

@@ -1,0 +1,36 @@
+@page "/admin/login"
+@model VSServerStats.Web.Pages.Admin.LoginModel
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — Přihlášení</title>
+    <link rel="stylesheet" href="/css/site.css" />
+</head>
+<body class="admin-body">
+<div class="admin-login-wrap">
+    <div class="admin-login-box">
+        <div class="admin-login-title">⚔ Admin</div>
+        <div class="admin-login-sub">Země koruny České</div>
+
+        @if (Model.Error)
+        {
+            <div class="admin-login-error">Nesprávné heslo.</div>
+        }
+
+        <form method="post" action="/admin/login" class="admin-login-form">
+            <div class="admin-field">
+                <label>Uživatel</label>
+                <input type="text" value="admin" readonly class="admin-input admin-input-readonly" />
+            </div>
+            <div class="admin-field">
+                <label>Heslo</label>
+                <input type="password" name="password" class="admin-input" autofocus autocomplete="current-password" />
+            </div>
+            <button type="submit" class="admin-btn-login">Přihlásit se</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

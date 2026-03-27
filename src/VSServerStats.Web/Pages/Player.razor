@@ -1,0 +1,353 @@
+@page "/player/{PlayerUid}"
+@inject VSServerStats.Web.Services.StatsService StatsService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>@(_player?.PlayerName ?? "Hráč") — Země koruny České</PageTitle>
+
+@if (_loading)
+{
+    <div class="player-loading">
+        <div class="loading-spinner"></div>
+    </div>
+}
+else if (_player == null)
+{
+    <div class="player-not-found">
+        <h2 class="section-title">Hráč nenalezen</h2>
+        <a class="btn-outline" href="leaderboard">← Zpět na žebříček</a>
+    </div>
+}
+else
+{
+
+    <div class="player-page">
+                        <a class="back-link" href="leaderboard">← Žebříček</a>
+        <div class="player-header">
+
+            <h1 class="player-name">@_player.PlayerName</h1>
+            <span class="player-status @(_isOnline ? "online" : "offline")">
+                @(_isOnline ? "● Online" : "● Offline")
+            </span>
+        </div>
+
+        <div class="player-layout">
+
+            <!-- Levá strana: skilly -->
+            <div class="player-skills-panel">
+                @if (_player.XSkillsLevels.Count > 0)
+                {
+                    const int MaxLevel = 25;
+                    <div class="poe-skills-header">
+                        <span class="poe-skills-title">Dovednosti</span>
+                        <span class="poe-skills-total">@_player.TotalXSkillsLevel celkem</span>
+                    </div>
+                    <div class="poe-skills-list">
+                        @foreach (var skill in _player.XSkillsLevels.OrderByDescending(s => s.Value))
+                        {
+                            var pct = skill.Value * 100.0 / MaxLevel;
+                            var pctStr = pct.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+                            var isMax = skill.Value >= MaxLevel;
+                            var isExpanded = _expandedSkill == skill.Key;
+                            var abilities = _player.XSkillsAbilities.TryGetValue(skill.Key, out var ab) ? ab : null;
+                            var hasAbilities = abilities != null && abilities.Count > 0;
+                            <div class="poe-skill-row @(hasAbilities ? "poe-skill-row-clickable" : "")" @onclick="() => ToggleSkill(skill.Key, hasAbilities)">
+                                <div class="poe-skill-top">
+                                    <span class="poe-skill-name">
+                                        @if (hasAbilities)
+                                        {
+                                            <span class="poe-skill-arrow @(isExpanded ? "expanded" : "")">▶</span>
+                                        }
+                                        @SkillName(skill.Key)
+                                    </span>
+                                    <span class="poe-skill-level @(isMax ? "poe-skill-maxed" : "")">@skill.Value <span class="poe-skill-max">/ @MaxLevel</span></span>
+                                </div>
+                                <div class="poe-skill-bar-track">
+                                    <div class="poe-skill-bar-fill @(isMax ? "poe-skill-bar-maxed" : "")" style="width:@pctStr%"></div>
+                                </div>
+                                @if (isExpanded && hasAbilities)
+                                {
+                                    <div class="poe-abilities-list">
+                                        @foreach (var ability in abilities!)
+                                        {
+                                            <div class="poe-ability-row">
+                                                <span class="poe-ability-name">@AbilityName(ability.Key)</span>
+                                                <span class="poe-ability-tier">@(new string('★', ability.Value))</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="poe-skills-empty">Žádné dovednosti</div>
+                }
+            </div>
+
+            <!-- Střed: 3D model -->
+            <div class="player-model-panel">
+                <div class="model-viewport">
+                    @if (_appearance != null)
+                    {
+                        <canvas id="player-model-canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></canvas>
+                    }
+                    else
+                    {
+                        <div class="model-placeholder">
+                            <div class="model-placeholder-icon">&#9876;</div>
+                            <div class="model-placeholder-text">Model nedostupný</div>
+                            <div class="model-placeholder-sub">Hráč se ještě nepřihlásil po aktualizaci</div>
+                        </div>
+                    }
+                    <div class="player-uid">@_player.PlayerUid</div>
+                </div>
+            </div>
+
+            <!-- Pravá strana: statistiky -->
+            <div class="player-stats-panel">
+
+                <div class="stats-section">
+                    <h3 class="stats-section-title">Přežití</h3>
+                    <div class="stats-grid">
+                        <div class="stat-row">
+                            <span class="stat-row-label">Zabití hráčů</span>
+                            <span class="stat-row-value">@_player.PlayerKills</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-row-label">Počet smrtí</span>
+                            <span class="stat-row-value deaths">@_player.Deaths</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-row-label">Odehraný čas</span>
+                            <span class="stat-row-value">@FormatPlaytime(_player.PlaytimeSeconds)</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-row-label">Ujetá vzdálenost</span>
+                            <span class="stat-row-value">@FormatDistance(_player.DistanceWalkedMeters)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h3 class="stats-section-title">Aktivita</h3>
+                    <div class="stats-grid">
+                        <div class="stat-row">
+                            <span class="stat-row-label">Naposledy viděn</span>
+                            <span class="stat-row-value">@_player.LastSeen.ToString("d. M. yyyy")</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_appearance?.CharacterClass))
+                        {
+                            <div class="stat-row">
+                                <span class="stat-row-label">Zaměstnání</span>
+                                <span class="stat-row-value">@_appearance.CharacterClass</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+    </div>
+}
+
+@code {
+    [Parameter] public string PlayerUid { get; set; } = "";
+
+    private VSServerStats.Shared.Models.PlayerStats? _player;
+    private VSServerStats.Shared.Models.PlayerAppearance? _appearance;
+    private bool _isOnline;
+    private bool _loading = true;
+    private bool _modelInitialized = false;
+    private string? _expandedSkill;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var decodedUid = Uri.UnescapeDataString(PlayerUid);
+        var statsTask = StatsService.GetStatsAsync();
+        var appearanceTask = StatsService.GetAppearanceAsync();
+
+        var stats = await statsTask;
+        if (stats != null)
+        {
+            _player = stats.Players.FirstOrDefault(p => p.PlayerUid == decodedUid);
+            _isOnline = _player != null && stats.OnlinePlayers.Contains(_player.PlayerName);
+        }
+
+        var appearances = await appearanceTask;
+        _appearance = appearances?.FirstOrDefault(a => a.PlayerUid == decodedUid);
+
+        _loading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_modelInitialized && _player != null && _appearance != null)
+        {
+            _modelInitialized = true;
+            var appearanceData = new
+            {
+                skinColor        = _appearance?.SkinColor ?? "",
+                hairColor        = _appearance?.HairColor ?? "",
+                eyeColor         = _appearance?.EyeColor  ?? "",
+                hairType         = _appearance?.HairType  ?? "",
+                hairExtra        = _appearance?.HairExtra ?? "",
+                facialExpression = _appearance?.FacialExpression ?? "",
+                facialHair       = _appearance?.FacialHair ?? "",
+            };
+
+            for (int i = 0; i < 10; i++)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("initPlayerModel", "player-model-canvas", appearanceData);
+                    break;
+                }
+                catch
+                {
+                    await Task.Delay(200);
+                }
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // renderer is cleaned up inside JS when initPlayerModel is called again or page unloads
+        await ValueTask.CompletedTask;
+    }
+
+    private void ToggleSkill(string key, bool hasAbilities)
+    {
+        if (!hasAbilities) return;
+        _expandedSkill = _expandedSkill == key ? null : key;
+    }
+
+    private static string AbilityName(string key) => key switch
+    {
+        "longlife"            => "Dlouhý život",
+        "hugestomach"         => "Velký žaludek",
+        "wellrested"          => "Odpočatý",
+        "featherfall"         => "Péřový pád",
+        "allrounder"          => "Všestranný",
+        "strongback"          => "Silná záda",
+        "scout"               => "Průzkumník",
+        "healer"              => "Léčitel",
+        "steeplechaser"       => "Překážkář",
+        "luminiferous"        => "Luminiferous",
+        "nudist"              => "Nudista",
+        "abundanceadaptation" => "Adaptace hojnosti",
+        "greenthumb"          => "Zelený palec",
+        "gatherer"            => "Sběrač",
+        "carefulhands"        => "Opatrné ruce",
+        "farmer"              => "Farmář",
+        "demetersbless"       => "Démétřino požehnání",
+        "claydigger"          => "Kopač hlíny",
+        "shovelexpert"        => "Expert s lopatou",
+        "carefuldigger"       => "Opatrný kopač",
+        "mixedclay"           => "Smíšená hlína",
+        "saltpeterdigger"     => "Kopač ledku",
+        "lumberjack"          => "Dřevorubec",
+        "afforestation"       => "Zalesňování",
+        "treenursery"         => "Lesní školka",
+        "charcoalburner"      => "Uhlíř",
+        "carefullumberjack"   => "Opatrný dřevorubec",
+        "moreladders"         => "Více žebříků",
+        "resinfarmer"         => "Pryskyřičář",
+        "stonebreaker"        => "Lámač kamene",
+        "oreminer"            => "Rudný horník",
+        "carefulminer"        => "Opatrný horník",
+        "miner"               => "Horník",
+        "crystalseeker"       => "Hledač krystalů",
+        "bomberman"           => "Minér",
+        "butcher"             => "Řezník",
+        "rancher"             => "Rančer",
+        "hunter"              => "Lovec",
+        "swordsman"           => "Šermíř",
+        "spearman"            => "Kopinář",
+        "looter"              => "Loupežník",
+        "toolmastery"         => "Mistr nástrojů",
+        "heavyarmorexpert"    => "Expert těžké zbroje",
+        "freshflesh"          => "Čerstvé maso",
+        "smelter"             => "Tavič",
+        "blacksmith"          => "Kovář",
+        "metalworker"         => "Kovozpracovatel",
+        "metalrecovery"       => "Recyklace kovů",
+        "hammerexpert"        => "Expert s kladivem",
+        "heatinghits"         => "Žhavé údery",
+        "finishingtouch"      => "Poslední dotyk",
+        "duplicator"          => "Duplikátor",
+        "mastersmith"         => "Mistr kovář",
+        "senseoftime"         => "Cit pro čas",
+        "machinelearning"     => "Strojové učení",
+        "bloomeryexpert"      => "Expert na dmychárnu",
+        "automatedsmithing"   => "Automatické kování",
+        "thrift"              => "Šetrnost",
+        "layerlayer"          => "Vrstva po vrstvě",
+        "perfectionist"       => "Perfekcionista",
+        "canteencook"         => "Polní kuchař",
+        "welldone"            => "Dobře propečené",
+        "dilution"            => "Ředění",
+        "fastfood"            => "Rychlé jídlo",
+        "gourmet"             => "Gurmán",
+        "saltybackpack"       => "Solený batoh",
+        "temporalstable"      => "Temporální stabilita",
+        "temporalrecovery"    => "Temporální regenerace",
+        "shifter"             => "Přesouvač",
+        "stableminer"         => "Stabilní horník",
+        "stablewarrior"       => "Stabilní válečník",
+        "caveman"             => "Jeskynní člověk",
+        "fastforward"         => "Rychle vpřed",
+        _                     => key
+    };
+
+    private static string SkillIcon(string key) => key switch
+    {
+        "survival"           => "❤",
+        "farming"            => "🌾",
+        "digging"            => "⛏",
+        "forestry"           => "🪓",
+        "mining"             => "⚒",
+        "husbandry"          => "🐄",
+        "combat"             => "⚔",
+        "metalworking"       => "🔨",
+        "pottery"            => "🏺",
+        "cooking"            => "🍲",
+        "temporaladaptation" => "⏳",
+        _                    => "✦"
+    };
+
+    private static string SkillName(string key) => key switch
+    {
+        "survival"           => "Přežití",
+        "farming"            => "Zemědělství",
+        "digging"            => "Kopání",
+        "forestry"           => "Lesnictví",
+        "mining"             => "Těžba",
+        "husbandry"          => "Chov",
+        "combat"             => "Boj",
+        "metalworking"       => "Kovářství",
+        "pottery"            => "Hrnčířství",
+        "cooking"            => "Vaření",
+        "temporaladaptation" => "Temp. adaptace",
+        _                    => key
+    };
+
+    private static string FormatPlaytime(double seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        if (ts.TotalHours < 1) return $"{ts.Minutes}m";
+        if (ts.TotalDays < 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+        return $"{(int)ts.TotalDays}d {ts.Hours}h";
+    }
+
+    private static string FormatDistance(double meters)
+    {
+        if (meters < 1000) return $"{(int)meters} m";
+        return $"{(meters / 1000.0):F1} km";
+    }
+}

@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- JSON serialization for file-based storage and mod↔web data exchange -->
-    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
 </Project>

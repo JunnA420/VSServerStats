@@ -1,0 +1,55 @@
+@page "/establishmentslist"
+@using System.Text.Json
+@inject IWebHostEnvironment _env
+@inject VSServerStats.Web.Services.IFileService FileService
+
+<PageTitle>Podniky — Země koruny České</PageTitle>
+
+<div class="content-page">
+    <h1 class="section-title">Žebříček</h1>
+        @if(_establishments == null)
+        {
+            <p>Načítání podniků...</p>
+        }else if(_establishments.Count == 0)
+        {
+            <p>Žádné podniky nenalezeny.</p>
+        }
+        else
+        {
+            @foreach (var establishment in _establishments){
+                <a class="card" href="establishment/@Uri.EscapeDataString(establishment.Name)" style="text-decoration:none; height: 150px; margin-bottom: 20px; display:block; color:inherit;">
+                    <div class="row" style="height: 100%;">
+                        <div class="col-7">
+                        <h3 class="card-title">@establishment.Name</h3>
+                        <p class="card-text">@establishment.Description</p>
+                        </div>
+                        <div class="col-5">
+                        <img src="@establishment.Pictures[0]" alt="@establishment.Name" class="card-image" style="max-width: 100%; max-height: 100px; object-fit: cover; margin-top: 10px;" />
+                        </div>
+                    </div>
+                </a>
+            }
+        }
+    
+</div>
+@code {
+    private List<VSServerStats.Web.Models.Establishment>? _establishments;
+
+     protected override async Task OnInitializedAsync
+     ()
+    {
+        _establishments = await LoadEstablishmentsAsync();
+
+    }
+
+    private async Task<List<VSServerStats.Web.Models.Establishment>> LoadEstablishmentsAsync()
+    {            
+        var json = await FileService.LoadEstablishmentsJson();
+
+        return JsonSerializer.Deserialize<List<VSServerStats.Web.Models.Establishment>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            }) ?? new List<VSServerStats.Web.Models.Establishment>();
+    }
+
+    }

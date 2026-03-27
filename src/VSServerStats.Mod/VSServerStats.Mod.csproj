@@ -1,11 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>VSServerStats</AssemblyName>
-    <!-- Output directly to VS mods folder for easy development iteration -->
     <OutputPath>$(APPDATA)\VintagestoryData\Mods\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
@@ -25,5 +24,18 @@
   <ItemGroup>
     <ProjectReference Include="..\VSServerStats.Shared\VSServerStats.Shared.csproj" />
   </ItemGroup>
+
+  <!-- Pack DLL + modinfo.json into a .zip after build -->
+  <Target Name="PackMod" AfterTargets="Build">
+    <PropertyGroup>
+      <ZipOutput>$(MSBuildProjectDirectory)\..\..\artifacts\vsserverstats.zip</ZipOutput>
+    </PropertyGroup>
+    <MakeDir Directories="$(MSBuildProjectDirectory)\..\..\artifacts" />
+    <Delete Files="$(ZipOutput)" />
+    <ZipDirectory SourceDirectory="$(MSBuildProjectDirectory)\_pack_temp" DestinationFile="$(ZipOutput)" Overwrite="true" Condition="false" />
+    <!-- Use PowerShell to zip DLL + modinfo -->
+    <Exec Command="powershell -NoProfile -Command &quot;$dll = '$(APPDATA)\VintagestoryData\Mods\VSServerStats.dll'; $shared = '$(MSBuildProjectDirectory)\..\VSServerStats.Shared\bin\Debug\net8.0\VSServerStats.Shared.dll'; $modinfo = '$(MSBuildProjectDirectory)\modinfo\modinfo.json'; $zip = '$(ZipOutput)'; if (Test-Path $zip) { Remove-Item $zip }; Add-Type -Assembly System.IO.Compression.FileSystem; $a = [System.IO.Compression.ZipFile]::Open($zip, 'Create'); [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($a, $dll, 'VSServerStats.dll'); [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($a, $shared, 'VSServerStats.Shared.dll'); [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($a, $modinfo, 'modinfo.json'); $a.Dispose()&quot;" />
+    <Message Text="Mod packed to: $(ZipOutput)" Importance="high" />
+  </Target>
 
 </Project>

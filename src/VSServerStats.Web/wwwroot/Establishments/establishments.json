@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Kovářství U Zlaté Podkovy",
+    "description": "Tradiční kovářství zaměřené na výrobu nástrojů a zbraní pro osadníky.",
+    "foundedIn": "2025-03-12T00:00:00",
+    "pictures": [
+      "/images/establishments/kovarstvi1.png",
+      "/images/establishments/kovarstvi2.png"
+    ]
+  },
+  {
+    "name": "Hostinec U Tří Sudů",
+    "description": "Oblíbené místo pro setkávání dobrodruhů a obchodníků.",
+    "foundedIn": "2025-06-01T00:00:00",
+    "pictures": [
+      "/images/establishments/hostinec1.png",
+      "/images/establishments/hostinec2.png",
+      "/images/establishments/hostinec3.png"
+    ]
+  },
+  {
+    "name": "Farma Zelený Háj",
+    "description": "Rozsáhlá farma produkující obilí, zeleninu a chovající dobytek.",
+    "foundedIn": null,
+    "pictures": [
+      "/images/establishments/farma1.png"
+    ]
+  }
+]

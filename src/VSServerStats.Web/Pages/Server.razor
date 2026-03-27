@@ -1,0 +1,211 @@
+@page "/server"
+@inject VSServerStats.Web.Services.StatsService StatsService
+@implements IDisposable
+
+<PageTitle>O serveru — Země koruny České</PageTitle>
+
+<div class="server-page">
+
+    <div class="server-hero">
+        <h1 class="server-hero-title">Země koruny České</h1>
+        <p class="server-hero-sub">Středověký roleplay server pro Vintage Story</p>
+        <div class="hero-divider"></div>
+    </div>
+
+    <!-- Fotogalerie -->
+    <section class="server-section">
+        <div class="carousel">
+            <button class="carousel-btn carousel-btn-prev" @onclick="PrevSlide">&#8249;</button>
+            <div class="carousel-track">
+                @foreach (var (src, i) in _screenshots.Select((s, i) => (s, i)))
+                {
+                    <div class="carousel-slide @(i == _currentSlide ? "active" : i == _prevSlide ? "prev" : "")">
+                        <img src="@src" alt="Screenshot ze serveru" />
+                    </div>
+                }
+            </div>
+            <button class="carousel-btn carousel-btn-next" @onclick="NextSlide">&#8250;</button>
+            <div class="carousel-dots">
+                @for (int i = 0; i < _screenshots.Count; i++)
+                {
+                    var idx = i;
+                    <span class="carousel-dot @(_currentSlide == idx ? "active" : "")" @onclick="() => GoToSlide(idx)"></span>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Feudální systém -->
+    <section class="server-section">
+        <h2 class="section-title">Feudální systém</h2>
+        <p class="server-intro">
+            Server funguje na principu středověkého feudálního systému. Hráči zastávají různé role
+            — od prostých poddaných až po samotného krále. Systém je živý a vyvíjí se podle toho,
+            jak server roste.
+        </p>
+
+        <div class="lore-grid">
+
+            <div class="lore-card">
+                <div class="lore-card-header">
+                    <span class="lore-icon">♚</span>
+                    <h3 class="lore-card-title">Král</h3>
+                </div>
+                <p class="lore-card-text">
+                    Volí se na <strong>1–2 týdny</strong>. Úkolem krále je během svého období
+                    vymýšlet a vyhlašovat krátkodobé projekty, které jsou reálně zvládnutelné —
+                    expedice, stavba kostela, opevnění, společné dílny, obchodní výpravy.
+                </p>
+                <div class="lore-rule lore-rule-warning">
+                    <span class="lore-rule-icon">&#9760;</span>
+                    Král má <strong>1 život</strong> — pokud zemře, nastává bezkráloví a správu přebírá rada.
+                </div>
+            </div>
+
+            <div class="lore-card">
+                <div class="lore-card-header">
+                    <span class="lore-icon">⚖</span>
+                    <h3 class="lore-card-title">Zákony</h3>
+                </div>
+                <p class="lore-card-text">
+                    Král může vydávat RP zákony a nařízení pro atmosféru a pořádek ve městě.
+                </p>
+                <div class="lore-examples">
+                    <div class="lore-example">„Zákaz smát se na veřejnosti"</div>
+                    <div class="lore-example">„Povinné klobouky ve městě"</div>
+                    <div class="lore-example">„Trh jen v určené dny"</div>
+                </div>
+                <div class="lore-rule lore-rule-danger">
+                    <span class="lore-rule-icon">✕</span>
+                    Žádné bourání cizích staveb, zásahy do majetku, ani tresty omezující hraní.
+                </div>
+            </div>
+
+            <div class="lore-card">
+                <div class="lore-card-header">
+                    <span class="lore-icon">&#9810;</span>
+                    <h3 class="lore-card-title">Šlechta &amp; Plebs</h3>
+                </div>
+                <p class="lore-card-text">
+                    Role se dělí podle počtu hráčů. Šlechtici jsou typicky nejsilnější
+                    a nejbohatší hráči na serveru.
+                </p>
+                <div class="lore-ratio">
+                    @if (_hasKing)
+                    {
+                        <div class="lore-ratio-item">
+                            <span class="lore-ratio-icon">♚</span>
+                            <span class="lore-ratio-label">1 Král</span>
+                        </div>
+                        <div class="lore-ratio-sep">+</div>
+                    }
+                    else
+                    {
+                        <div class="lore-ratio-item lore-ratio-inactive">
+                            <span class="lore-ratio-icon">♚</span>
+                            <span class="lore-ratio-label">Bezkráloví</span>
+                        </div>
+                        <div class="lore-ratio-sep">+</div>
+                    }
+                    <div class="lore-ratio-item">
+                        <span class="lore-ratio-icon">♜</span>
+                        <span class="lore-ratio-label">@_nobilityCount Šlechtici</span>
+                    </div>
+                    <div class="lore-ratio-sep">+</div>
+                    <div class="lore-ratio-item">
+                        <span class="lore-ratio-icon">&#9786;</span>
+                        <span class="lore-ratio-label">@_plebsCount Plebů</span>
+                    </div>
+                    <div class="lore-ratio-note">z @_totalPlayers registrovaných hráčů@(_totalPlayers < 8 ? " — král od 8 hráčů" : "")</div>
+                </div>
+            </div>
+
+            <div class="lore-card">
+                <div class="lore-card-header">
+                    <span class="lore-icon">&#9812;</span>
+                    <h3 class="lore-card-title">Rada království</h3>
+                </div>
+                <p class="lore-card-text">
+                    Král + šlechta tvoří radu. Rada řeší <strong>dlouhodobé projekty</strong> —
+                    katedrály, monumenty, hlavní cesty, velké stavby.
+                    Během bezkráloví spravuje království šlechtická rada.
+                </p>
+            </div>
+
+            <div class="lore-card lore-card-wide">
+                <div class="lore-card-header">
+                    <span class="lore-icon">&#9775;</span>
+                    <h3 class="lore-card-title">Ekonomika &amp; Měna</h3>
+                </div>
+                <p class="lore-card-text">
+                    Na serveru jsou mody na výrobu měny a hráčské obchody. Měna se zavádí
+                    postupně — podobně jako historicky vstupovala do oběhu.
+                    Cílem je funkční ekonomika alespoň v malém měřítku: obchod, služby, zakázky.
+                </p>
+                <div class="lore-rule lore-rule-info">
+                    <span class="lore-rule-icon">&#9432;</span>
+                    Dokud server poroste, systém se přizpůsobuje. V raných fázích bez bronzu
+                    vládne šlechtická rada místo krále.
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</div>
+
+@code {
+    private int _totalPlayers;
+    private bool _hasKing;
+    private int _nobilityCount;
+    private int _plebsCount;
+
+    private readonly List<string> _screenshots = new()
+    {
+        "img/screenshots/2026-02-15_21-24-17.png",
+        "img/screenshots/2026-02-15_22-21-32.png",
+        "img/screenshots/2026-02-22_15-21-51.png",
+        "img/screenshots/2026-02-22_16-06-16.png",
+        "img/screenshots/2026-03-22_23-37-45.png",
+    };
+
+    private int _currentSlide = 0;
+    private int _prevSlide = -1;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var stats = await StatsService.GetStatsAsync();
+        _totalPlayers = stats?.Players.Count ?? 0;
+        _hasKing = _totalPlayers >= 8;
+
+        int remaining = _hasKing ? _totalPlayers - 1 : _totalPlayers;
+        _nobilityCount = (int)Math.Round(remaining * 0.30);
+        _plebsCount = remaining - _nobilityCount;
+
+        _timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() => { NextSlide(); StateHasChanged(); });
+        }, null, 4000, 4000);
+    }
+
+    private void NextSlide()
+    {
+        _prevSlide = _currentSlide;
+        _currentSlide = (_currentSlide + 1) % _screenshots.Count;
+    }
+
+    private void PrevSlide()
+    {
+        _prevSlide = _currentSlide;
+        _currentSlide = (_currentSlide - 1 + _screenshots.Count) % _screenshots.Count;
+    }
+
+    private void GoToSlide(int idx)
+    {
+        _prevSlide = _currentSlide;
+        _currentSlide = idx;
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

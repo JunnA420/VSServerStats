@@ -1,0 +1,306 @@
+@page "/admin/player/{Uid}"
+@layout AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject AdminService AdminService
+@inject NavigationManager Nav
+@using VSServerStats.Shared.Models
+@using VSServerStats.Web.Services
+@using VSServerStats.Web.Shared
+
+<PageTitle>Hráč — Admin</PageTitle>
+
+@if (_loading)
+{
+    <p class="admin-empty">Načítám…</p>
+}
+else if (_player == null)
+{
+    <div class="admin-topbar">
+        <h1 class="admin-page-title">Hráč nenalezen</h1>
+    </div>
+    <p class="admin-offline">Hráč s tímto UID nebyl nalezen.</p>
+}
+else
+{
+    <div class="admin-topbar">
+        <h1 class="admin-page-title">
+            @_player.PlayerName
+            @if (_player.IsOnline) { <span class="badge badge-online">online</span> }
+            @if (_player.IsBanned) { <span class="badge badge-banned">ban</span> }
+        </h1>
+        <span class="admin-updated">@_player.PlayerUid</span>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="admin-cards admin-cards-sm">
+        <div class="admin-card">
+            <div class="admin-card-icon">⏱</div>
+            <div class="admin-card-value">@Fmt.Playtime(_player.PlaytimeSeconds)</div>
+            <div class="admin-card-label">Odehráno</div>
+        </div>
+        <div class="admin-card">
+            <div class="admin-card-icon">💀</div>
+            <div class="admin-card-value">@_player.Deaths</div>
+            <div class="admin-card-label">Smrtí</div>
+        </div>
+        <div class="admin-card">
+            <div class="admin-card-icon">⚔</div>
+            <div class="admin-card-value">@_player.PlayerKills</div>
+            <div class="admin-card-label">Zabití</div>
+        </div>
+        <div class="admin-card">
+            <div class="admin-card-icon">🚶</div>
+            <div class="admin-card-value">@Fmt.Distance(_player.DistanceWalkedMeters)</div>
+            <div class="admin-card-label">Vzdálenost</div>
+        </div>
+        <div class="admin-card">
+            <div class="admin-card-icon">📅</div>
+            <div class="admin-card-value">@_player.FirstSeen.ToLocalTime().ToString("dd.MM.yyyy")</div>
+            <div class="admin-card-label">První přihlášení</div>
+        </div>
+        <div class="admin-card">
+            <div class="admin-card-icon">🕒</div>
+            <div class="admin-card-value">@_player.LastSeen.ToLocalTime().ToString("dd.MM.yyyy")</div>
+            <div class="admin-card-label">Naposledy online</div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <section class="admin-section">
+        <h2 class="admin-section-title">Akce</h2>
+
+        @if (!string.IsNullOrEmpty(_actionMsg))
+        {
+            <div class="admin-action-msg @(_actionOk ? "admin-action-ok" : "admin-action-err")">@_actionMsg</div>
+        }
+
+        <div class="admin-action-row">
+            <!-- Kick -->
+            <div class="admin-action-group">
+                <label class="admin-action-label">Kick</label>
+                <input class="admin-input admin-input-sm" placeholder="Důvod…" @bind="_kickReason" @bind:event="oninput" />
+                <button class="admin-btn admin-btn-warn" @onclick="DoKick" disabled="@_busy">Kicknout</button>
+            </div>
+
+            <!-- Ban -->
+            @if (!_player.IsBanned)
+            {
+                <div class="admin-action-group">
+                    <label class="admin-action-label">Ban</label>
+                    <input class="admin-input admin-input-sm" placeholder="Důvod…" @bind="_banReason" />
+                    <input class="admin-input admin-input-sm" type="number" min="0" placeholder="Hodiny (0 = trvale)" @bind="_banHours" style="width:120px" />
+                    <button class="admin-btn admin-btn-danger" @onclick="DoBan" disabled="@_busy">Zabanovat</button>
+                </div>
+            }
+            else
+            {
+                <div class="admin-action-group">
+                    <label class="admin-action-label">Unban</label>
+                    <button class="admin-btn admin-btn-ok" @onclick="DoUnban" disabled="@_busy">Odbanovat</button>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Ban history -->
+    <section class="admin-section">
+        <h2 class="admin-section-title">Historie banů</h2>
+        @if (_bans == null || !_bans.Any())
+        {
+            <p class="admin-empty">Žádné bany.</p>
+        }
+        else
+        {
+            <table class="admin-table">
+                <thead><tr><th>Datum</th><th>Důvod</th><th>Expiruje</th><th>Aktivní</th></tr></thead>
+                <tbody>
+                    @foreach (var b in _bans.OrderByDescending(b => b.BannedAt))
+                    {
+                        <tr class="@(b.Active ? "admin-row-banned" : "")">
+                            <td class="admin-td-num">@b.BannedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@b.Reason</td>
+                            <td class="admin-td-num">@(b.ExpiresAt.HasValue ? b.ExpiresAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "trvale")</td>
+                            <td class="admin-td-num">@(b.Active ? "✓" : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <!-- Chat log -->
+    <section class="admin-section">
+        <h2 class="admin-section-title">Chat log</h2>
+
+        <!-- Import from log file -->
+        <div class="admin-import-row">
+            <label class="admin-action-label">Import z log souboru:</label>
+            <InputFile OnChange="OnLogFileSelected" accept=".txt,.log" class="admin-file-input" />
+            @if (_importMsg != null)
+            {
+                <span class="admin-action-msg @(_importOk ? "admin-action-ok" : "admin-action-err")">@_importMsg</span>
+            }
+        </div>
+
+        @if (_chatLog == null || !_chatLog.Any())
+        {
+            <p class="admin-empty">Žádné zprávy.</p>
+        }
+        else
+        {
+            var filtered = string.IsNullOrWhiteSpace(_chatSearch)
+                ? _chatLog.OrderByDescending(m => m.Timestamp).ToList()
+                : _chatLog.Where(m => m.Message.Contains(_chatSearch, StringComparison.OrdinalIgnoreCase))
+                          .OrderByDescending(m => m.Timestamp).ToList();
+
+            <div class="admin-chat-toolbar">
+                <input class="admin-input admin-input-sm admin-chat-search"
+                       placeholder="Hledat v chatu…"
+                       @bind="_chatSearch" @bind:event="oninput" />
+                <span class="admin-chat-count">@filtered.Count / @_chatLog.Count zpráv</span>
+            </div>
+
+            <div class="admin-chat-log">
+                @foreach (var m in filtered)
+                {
+                    <div class="admin-chat-item">
+                        <span class="admin-chat-time">@m.Timestamp.ToLocalTime().ToString("dd.MM. HH:mm")</span>
+                        <span class="admin-chat-msg">@m.Message</span>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public string Uid { get; set; } = "";
+
+    private AdminPlayerRow? _player;
+    private List<BanRecord>? _bans;
+    private List<ChatMessage>? _chatLog;
+    private bool _loading = true;
+    private bool _busy;
+
+    private string _kickReason = "";
+    private string _banReason = "";
+    private int _banHours = 0;
+    private string _actionMsg = "";
+    private bool _actionOk;
+
+    private string? _importMsg;
+    private bool _importOk;
+    private string _chatSearch = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var decodedUid = Uri.UnescapeDataString(Uid);
+
+        var players = await AdminService.GetPlayersAsync();
+        _player = players?.FirstOrDefault(p => p.PlayerUid == decodedUid);
+
+        var bans = await AdminService.GetBansAsync(decodedUid);
+        _bans = bans?.Bans ?? new();
+
+        var chat = await AdminService.GetChatLogAsync(decodedUid);
+        _chatLog = chat?.Messages ?? new();
+
+        _loading = false;
+    }
+
+    private async Task DoKick()
+    {
+        if (_player == null) return;
+        _busy = true; _actionMsg = "";
+        var res = await AdminService.KickPlayerAsync(new AdminActionRequest
+        {
+            PlayerUid  = _player.PlayerUid,
+            PlayerName = _player.PlayerName,
+            Reason     = _kickReason
+        });
+        _actionOk  = res?.Success ?? false;
+        _actionMsg = res?.Message ?? "Chyba komunikace";
+        _busy = false;
+    }
+
+    private async Task DoBan()
+    {
+        if (_player == null) return;
+        _busy = true; _actionMsg = "";
+        var res = await AdminService.BanPlayerAsync(new AdminActionRequest
+        {
+            PlayerUid    = _player.PlayerUid,
+            PlayerName   = _player.PlayerName,
+            Reason       = _banReason,
+            DurationHours = _banHours
+        });
+        _actionOk  = res?.Success ?? false;
+        _actionMsg = res?.Message ?? "Chyba komunikace";
+        if (_actionOk) _player.IsBanned = true;
+        _busy = false;
+    }
+
+    private async Task DoUnban()
+    {
+        if (_player == null) return;
+        _busy = true; _actionMsg = "";
+        var res = await AdminService.UnbanPlayerAsync(_player.PlayerUid);
+        _actionOk  = res?.Success ?? false;
+        _actionMsg = res?.Message ?? "Chyba komunikace";
+        if (_actionOk) _player.IsBanned = false;
+        _busy = false;
+    }
+
+    private async Task OnLogFileSelected(InputFileChangeEventArgs e)
+    {
+        if (_player == null) return;
+        _importMsg = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var reader = new System.IO.StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            var lines = content.Split('\n');
+
+            // Parse lines like: [HH:MM:SS] PlayerName: message
+            var messages = new List<ChatMessage>();
+            var namePrefix = _player.PlayerName + ": ";
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                var nameIdx = trimmed.IndexOf(namePrefix, StringComparison.OrdinalIgnoreCase);
+                if (nameIdx < 0) continue;
+                var msg = trimmed[(nameIdx + namePrefix.Length)..].Trim();
+                if (string.IsNullOrEmpty(msg)) continue;
+                messages.Add(new ChatMessage
+                {
+                    PlayerUid  = _player.PlayerUid,
+                    PlayerName = _player.PlayerName,
+                    Message    = msg,
+                    Timestamp  = DateTime.UtcNow
+                });
+            }
+
+            if (messages.Count == 0)
+            {
+                _importOk = false;
+                _importMsg = "Nenalezeny žádné zprávy pro tohoto hráče.";
+                return;
+            }
+
+            var res = await AdminService.ImportChatAsync(messages);
+            _importOk  = res?.Success ?? false;
+            _importMsg = res?.Message ?? "Chyba komunikace";
+            if (_importOk)
+            {
+                var chat = await AdminService.GetChatLogAsync(_player.PlayerUid);
+                _chatLog = chat?.Messages;
+            }
+        }
+        catch (Exception ex)
+        {
+            _importOk = false;
+            _importMsg = "Chyba: " + ex.Message;
+        }
+    }
+}

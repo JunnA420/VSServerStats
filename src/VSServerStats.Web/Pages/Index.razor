@@ -1,9 +1,85 @@
-﻿@page "/"
+@page "/"
+@inject VSServerStats.Web.Services.StatsService StatsService
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Země koruny České — Statistiky serveru</PageTitle>
 
-<h1>Hello, world!</h1>
+<section class="hero">
+    <img class="hero-logo" src="img/logo.png" alt="Země koruny České" />
 
-Welcome to your new app.
+    <h1 class="hero-title">Země koruny České</h1>
+    <p class="hero-subtitle">Statistiky herního serveru</p>
+    <p class="hero-subtitle">162.120.2.72:1045</p>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+    <div class="hero-divider"></div>
+
+    <div class="hero-actions">
+        <a class="btn-gold" href="leaderboard">Žebříček</a>
+        <a class="btn-outline" href="server">O serveru</a>
+    </div>
+</section>
+
+<div class="stats-strip">
+    <div class="stat-item">
+        <div class="stat-value">@(_stats?.OnlinePlayers.Count.ToString() ?? "offline")</div>
+        <div class="stat-label">Hráči online</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">@(_stats != null ? _stats.Players.Count.ToString() : "offline")</div>
+        <div class="stat-label">Registrovaní hráči</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">@(_stats != null ? TotalDeaths() : "offline")</div>
+        <div class="stat-label">Celkem smrtí</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">@(_stats != null ? TotalDistanceKm() : "offline")</div>
+        <div class="stat-label">Km ušlapaných</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">@(_stats != null ? TotalHours() : "offline")</div>
+        <div class="stat-label">Hodin na serveru</div>
+    </div>
+</div>
+
+<div class="content-section">
+    <h2 class="section-title">Co sledujeme</h2>
+    <div class="card-grid">
+        <a class="card" href="leaderboard" style="text-decoration:none;">
+            <div class="card-icon">&#9812;</div>
+            <h3 class="card-title">Žebříček</h3>
+            <p class="card-text">Nejlepší hráči seřazení podle doby přežití, zabití, vyrobených předmětů a dalšího. Bojuj o korunu.</p>
+        </a>
+        <a class="card" href="server" style="text-decoration:none;">
+            <div class="card-icon">&#9670;</div>
+            <h3 class="card-title">Informace o serveru</h3>
+            <p class="card-text">Aktuální stav serveru, probíhající sezóna, věk světa, aktivní události a detaily připojení.</p>
+        </a>
+        <a class="card" href="map" style="text-decoration:none;">
+            <div class="card-icon">&#9775;</div>
+            <h3 class="card-title">Mapa světa</h3>
+            <p class="card-text">Prozkoumej objevená území, důležitá místa a rozsah hráčských osad.</p>
+        </a>
+    </div>
+</div>
+
+<footer class="footer">
+    Země koruny České &mdash; Vintage Story &mdash; Statistiky serveru
+</footer>
+
+@code {
+    private VSServerStats.Shared.Models.ServerStatsResponse? _stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await StatsService.GetStatsAsync();
+    }
+
+    private string TotalDeaths() =>
+        _stats!.Players.Sum(p => p.Deaths).ToString();
+
+    private string TotalDistanceKm() =>
+        ((int)(_stats!.Players.Sum(p => p.DistanceWalkedMeters) / 1000)).ToString() + " km";
+
+    private string TotalHours() =>
+        ((int)(_stats!.Players.Sum(p => p.PlaytimeSeconds) / 3600)).ToString("N0");
+}

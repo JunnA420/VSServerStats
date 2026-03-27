@@ -1,0 +1,121 @@
+@page "/admin/whitelist"
+@layout AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject AdminService AdminService
+@using VSServerStats.Shared.Models
+@using VSServerStats.Web.Services
+@using VSServerStats.Web.Shared
+
+<PageTitle>Whitelist — Admin</PageTitle>
+
+<div class="admin-topbar">
+    <h1 class="admin-page-title">Whitelist</h1>
+</div>
+
+<!-- Add player -->
+<section class="admin-section">
+    <h2 class="admin-section-title">Přidat hráče</h2>
+    @if (!string.IsNullOrEmpty(_addMsg))
+    {
+        <div class="admin-action-msg @(_addOk ? "admin-action-ok" : "admin-action-err")">@_addMsg</div>
+    }
+    <div class="admin-action-row">
+        <div class="admin-action-group">
+            <input class="admin-input admin-input-sm" placeholder="UID hráče…" @bind="_addUid" />
+            <input class="admin-input admin-input-sm" placeholder="Jméno (volitelné)…" @bind="_addName" />
+            <button class="admin-btn admin-btn-ok" @onclick="DoAdd" disabled="@_busy">Přidat</button>
+        </div>
+    </div>
+</section>
+
+<!-- Whitelist table -->
+<section class="admin-section">
+    <h2 class="admin-section-title">Whitelist (@(_entries?.Count ?? 0) hráčů)</h2>
+    @if (_loading)
+    {
+        <p class="admin-empty">Načítám…</p>
+    }
+    else if (_entries == null)
+    {
+        <p class="admin-offline">Nelze načíst whitelist — server nedostupný nebo špatný token.</p>
+    }
+    else if (!_entries.Any())
+    {
+        <p class="admin-empty">Whitelist je prázdný.</p>
+    }
+    else
+    {
+        <table class="admin-table">
+            <thead><tr><th>Hráč</th><th>UID</th><th>Přidán</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var e in _entries.OrderByDescending(e => e.AddedAt))
+                {
+                    <tr>
+                        <td>@e.PlayerName</td>
+                        <td class="admin-td-uid">@e.PlayerUid</td>
+                        <td class="admin-td-num">@e.AddedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <button class="admin-btn admin-btn-danger admin-btn-xs"
+                                    @onclick="() => DoRemove(e.PlayerUid)"
+                                    disabled="@_busy">Odebrat</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    @if (!string.IsNullOrEmpty(_removeMsg))
+    {
+        <div class="admin-action-msg @(_removeOk ? "admin-action-ok" : "admin-action-err") mt-2">@_removeMsg</div>
+    }
+</section>
+
+@code {
+    private List<WhitelistEntry>? _entries;
+    private bool _loading = true;
+    private bool _busy;
+
+    private string _addUid = "";
+    private string _addName = "";
+    private string _addMsg = "";
+    private bool _addOk;
+    private string _removeMsg = "";
+    private bool _removeOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+        _loading = false;
+    }
+
+    private async Task Reload()
+    {
+        var res = await AdminService.GetWhitelistAsync();
+        _entries = res?.Entries;
+    }
+
+    private async Task DoAdd()
+    {
+        if (string.IsNullOrWhiteSpace(_addUid)) { _addOk = false; _addMsg = "UID je povinné."; return; }
+        _busy = true; _addMsg = "";
+        var res = await AdminService.AddToWhitelistAsync(new AdminActionRequest
+        {
+            PlayerUid  = _addUid.Trim(),
+            PlayerName = _addName.Trim()
+        });
+        _addOk  = res?.Success ?? false;
+        _addMsg = res?.Message ?? "Chyba komunikace";
+        if (_addOk) { _addUid = ""; _addName = ""; await Reload(); }
+        _busy = false;
+    }
+
+    private async Task DoRemove(string uid)
+    {
+        _busy = true; _removeMsg = "";
+        var res = await AdminService.RemoveFromWhitelistAsync(uid);
+        _removeOk  = res?.Success ?? false;
+        _removeMsg = res?.Message ?? "Chyba komunikace";
+        if (_removeOk) await Reload();
+        _busy = false;
+    }
+}
