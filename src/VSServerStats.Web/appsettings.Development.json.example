@@ -1,0 +1,14 @@
+{
+  "DetailedErrors": true,
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ModApiUrl": "http://<server-ip>:1047",
+  "Dashboard": {
+    "AdminPassword": "<your-admin-password>",
+    "ModAdminToken": "<token-from-ModData/vsserverstats-config.json>"
+  }
+}
